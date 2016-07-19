@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SG Sound Server</title>
+<style>
+div#pagetop { background: #666; padding:20px; font-size:36px; width:100%; border-bottom:#000 1px solid; }
+.trackbar{ background:#DDD; height:50px; font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; }
+.trackbar:nth-child(even) { background:#EEE; }
+.playbutton{ opacity:.8; display:block; float:left; width:19px; height:22px; margin:14px 0px 0px 14px; background:url(images/playbtn.png) no-repeat; border:none; cursor:pointer; outline:none; }
+.playbutton:hover{ opacity:1; }
+.trackname{ float:left; color:#000; margin:12px 0px 0px 14px; font-size:20px; font-weight:bold; }
+
+a.button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 16px 22px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    -webkit-transition-duration: 0.4s; /* Safari */
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+a.tagButton {
+    background-color: white;
+    color: black;
+    border: 2px solid #555555;
+}
+
+a.tagButton:hover {
+    background-color: #555555;
+    color: white;
+}
+
+div#albummenubox { left:856px; top:50px; width:950px; height:200px; background:#CCC; padding:12px; color:#000; border-radius: 10px; }
+</style>
+<script>
+//globals
+var audio = new Audio();
+var audioData;
+</script>
+<script>
+
+function _(id){
+	return document.getElementById(id);
+}
+function listTags(folder)
+{
+	var aud_tags = document.getElementById("aud_tags");
+	var hr = new XMLHttpRequest();
+    hr.open("POST", "json_directory_data.php", true);
+	hr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	 hr.onreadystatechange = function() {
+	    if(hr.readyState == 4 && hr.status == 200) {
+		    var dirs = JSON.parse(hr.responseText);
+		    aud_tags.innerHTML += '<a href="#" class="button tagButton" onclick="return false" onmousedown="refresh(\'all\')">All</a>';
+		    for(var dir in dirs){
+				aud_tags.innerHTML += '<a href="#" class="button tagButton" onclick="return false" onmousedown="refresh(\''+dirs[dir].name+'\')">'+dirs[dir].name+'</a>';
+			}
+	    }
+    }
+    hr.send("folder="+folder);
+}
+
+function initAudioApp(folder){
+
+	var hr = new XMLHttpRequest();
+    hr.open("POST", "json_audio_data.php", true);
+	hr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	 hr.onreadystatechange = function() {
+	    if(hr.readyState == 4 && hr.status == 200) {
+		    audioData = hr.responseText;
+	    }
+    }
+    hr.send("folder="+folder);
+
+}
+
+function audioApp(folder){
+
+	var audio_index = 1;
+	var is_playing = false;
+	var playingtrack;
+	var trackbox = _("trackbox");
+
+	var tracks = JSON.parse(audioData);
+
+	for(var track in tracks){
+		if(folder == 'all' || tracks[track].tag == folder)
+		{
+			var tb = document.createElement("div");
+			var pb = document.createElement("button");
+			var tn = document.createElement("div");
+			tb.className = "trackbar";
+			pb.className = "playbutton";
+			tn.className = "trackname";
+			tn.innerHTML = audio_index+". "+tracks[track].name;
+			pb.id = tracks[track].src;
+			pb.addEventListener("click", switchTrack);
+			tb.appendChild(pb);
+			tb.appendChild(tn);
+			trackbox.appendChild(tb);
+			audio_index++;
+		}
+	}
+
+
+	audio.addEventListener("ended",function(){
+	    _(playingtrack).style.background = "url(images/playbtn.png)";
+		playingtrack = "";
+		is_playing = false;
+	});
+	function switchTrack(event){
+		if(is_playing){
+		    if(playingtrack != event.target.id){
+			    is_playing = true;
+				_(playingtrack).style.background = "url(images/playbtn.png)";
+			    event.target.style.background = "url(images/pausebtn.png)";
+			    audio.src = event.target.id;
+	            audio.play();
+			} else {
+			    audio.pause();
+			    is_playing = false;
+				event.target.style.background = "url(images/playbtn.png)";
+			}
+		} else {
+			is_playing = true;
+			event.target.style.background = "url(images/pausebtn.png)";
+			if(playingtrack != event.target.id){
+				audio.src = event.target.id;
+			}
+	        audio.play();
+		}
+		playingtrack = event.target.id;
+	}
+}
+
+
+function refresh(folder)
+{
+
+	while(trackbox.hasChildNodes())
+	{
+		trackbox.removeChild(trackbox.lastChild);
+	}
+	audioApp(folder);
+}
+
+
+function searchAudioApp(search)
+{
+	var audio_index = 1;
+	var is_playing = false;
+	var playingtrack;
+	var trackbox = _("trackbox");
+
+	var tracks = JSON.parse(audioData);
+
+	for(var track in tracks){
+		if(tracks[track].name.search(search) > -1)
+		{
+			var tb = document.createElement("div");
+			var pb = document.createElement("button");
+			var tn = document.createElement("div");
+			tb.className = "trackbar";
+			pb.className = "playbutton";
+			tn.className = "trackname";
+			tn.innerHTML = audio_index+". "+tracks[track].name;
+			pb.id = tracks[track].src;
+			pb.addEventListener("click", switchTrack);
+			tb.appendChild(pb);
+			tb.appendChild(tn);
+			trackbox.appendChild(tb);
+			audio_index++;
+		}
+	}
+
+
+	audio.addEventListener("ended",function(){
+	    _(playingtrack).style.background = "url(images/playbtn.png)";
+		playingtrack = "";
+		is_playing = false;
+	});
+	function switchTrack(event){
+		if(is_playing){
+		    if(playingtrack != event.target.id){
+			    is_playing = true;
+				_(playingtrack).style.background = "url(images/playbtn.png)";
+			    event.target.style.background = "url(images/pausebtn.png)";
+			    audio.src = event.target.id;
+	            audio.play();
+			} else {
+			    audio.pause();
+			    is_playing = false;
+				event.target.style.background = "url(images/playbtn.png)";
+			}
+		} else {
+			is_playing = true;
+			event.target.style.background = "url(images/pausebtn.png)";
+			if(playingtrack != event.target.id){
+				audio.src = event.target.id;
+			}
+	        audio.play();
+		}
+		playingtrack = event.target.id;
+	}
+}
+
+function refreshSearch(search)
+{
+	while(trackbox.hasChildNodes())
+	{
+		trackbox.removeChild(trackbox.lastChild);
+	}
+	searchAudioApp(search);
+}
+
+</script>
+</head>
+<body>
+
+<div id="pagetop">
+<img src="images/pausebtn.png"/>
+sound server prototype
+</div>
+
+<div id="searchbar">
+<br/>
+	<form onsubmit="refreshSearch(this.a1.value); return false;">
+	    <input type="text" name="a1" size="20" placeholder="Search tags..." />
+	            <input type="submit" value="Find" />
+	    <br />
+	    <br />
+	  </form>
+</div>
+
+<div id="albummenubox">
+ 
+  <div id="aud_tags"></div>
+</div>
+
+  <div id="trackbox"></div>
+  
+  <script>
+  listTags('tags');
+  initAudioApp('tags');
+  </script>
+</body>
+</html>
